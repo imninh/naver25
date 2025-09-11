@@ -275,7 +275,7 @@ export default function AnalyticsPage() {
         max: 1,
         ticks: {
           stepSize: 1,
-          callback: function(value: number) {
+          callback: function(value: string | number) {
             return value === 1 ? 'Done' : 'Pending';
           },
           font: {

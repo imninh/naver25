@@ -104,7 +104,6 @@ body {
     height: 50px;
   }
 }
-
 /* Đảm bảo các phần khác của trang không bị ảnh hưởng */
 .min-h-screen {
   min-height: 100vh;

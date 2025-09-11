@@ -434,7 +434,7 @@ export default function CalendarPage() {
   );
 
   const handleSelectEvent = (event: Event) => {
-    const task = tasks.find(t => t.id === event.id);
+    const task = tasks.find(t => t.id === (event as any).id);
     if (task) {
       setSelectedTask(task);
     }

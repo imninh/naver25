@@ -29,5 +29,5 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["src", "src/TaskContext.tsx"]
+  "include": ["src"]
 }
