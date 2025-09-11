@@ -294,73 +294,105 @@ export default function ListPage() {
       </form>
 
         {/* Edit Task Modal */}
-        {editingTask && (
-          <div className="edit-task-modal">
-            <div className="edit-task-content">
-              <div className="modal-header">
-                <h3>Edit Task</h3>
-                <button onClick={cancelEditing} className="close-btn">&times;</button>
-              </div>
-              <form onSubmit={handleEditSubmit} className="task-form">
-                <div className="form-grid">
-                  <input
-                    type="text"
-                    placeholder="Task title *"
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    className="task-input title-input"
-                    required
-                  />
-                  <input
-                    type="text"
-                    placeholder="Subject/Course (optional)"
-                    value={editSubject}
-                    onChange={(e) => setEditSubject(e.target.value)}
-                    className="task-input"
-                  />
-                  <input
-                    type="date"
-                    value={editDueDate}
-                    onChange={(e) => setEditDueDate(e.target.value)}
-                    className="task-input"
-                    placeholder="Due date"
-                  />
-                  <input
-                    type="time"
-                    value={editDueTime}
-                    onChange={(e) => setEditDueTime(e.target.value)}
-                    className="task-input"
-                    placeholder="Time"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Description (optional)"
-                    value={editDesc}
-                    onChange={(e) => setEditDesc(e.target.value)}
-                    className="task-input"
-                  />
-                  <select
-                    value={editPriority}
-                    onChange={(e) => setEditPriority(e.target.value as "High" | "Medium" | "Low")}
-                    className="task-input"
-                  >
-                    <option value="High">High Priority</option>
-                    <option value="Medium">Medium Priority</option>
-                    <option value="Low">Low Priority</option>
-                  </select>
-                  <div className="edit-buttons">
-                    <button type="submit" className="save-btn">
-                      Save Changes
-                    </button>
-                    <button type="button" onClick={cancelEditing} className="cancel-btn">
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </div>
+        {/* Edit Task Modal */}
+{editingTask && (
+  <div className="edit-task-modal">
+    <div className="edit-task-content">
+      <div className="modal-header">
+        <h3>Edit Task</h3>
+        <button onClick={cancelEditing} className="close-btn">&times;</button>
+      </div>
+      
+      <form onSubmit={handleEditSubmit} className="task-form">
+        <div className="form-row">
+          <div className="form-group">
+            <label>Subject/Course</label>
+            <input
+              type="text"
+              placeholder="Subject/Course (optional)"
+              value={editSubject}
+              onChange={(e) => setEditSubject(e.target.value)}
+              className="task-input"
+            />
           </div>
-        )}
+        </div>
+        
+        <div className="form-row">
+          <div className="form-group">
+            <label>Due Date</label>
+            <input
+              type="date"
+              value={editDueDate}
+              onChange={(e) => setEditDueDate(e.target.value)}
+              className="task-input"
+            />
+          </div>
+          
+          <div className="form-group">
+            <label>Time</label>
+            <input
+              type="time"
+              value={editDueTime}
+              onChange={(e) => setEditDueTime(e.target.value)}
+              className="task-input"
+            />
+          </div>
+        </div>
+        
+        <div className="form-row">
+          <div className="form-group full-width">
+            <label>Task Title *</label>
+            <input
+              type="text"
+              placeholder="Task title *"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="task-input title-input"
+              required
+            />
+          </div>
+        </div>
+        
+        <div className="form-row">
+          <div className="form-group full-width">
+            <label>Description</label>
+            <textarea
+              placeholder="Description (optional)"
+              value={editDesc}
+              onChange={(e) => setEditDesc(e.target.value)}
+              className="task-input"
+              rows={2}
+            />
+          </div>
+        </div>
+        
+        <div className="form-row">
+          <div className="form-group">
+            <label>Priority</label>
+            <select
+              value={editPriority}
+              onChange={(e) => setEditPriority(e.target.value as "High" | "Medium" | "Low")}
+              className="task-input"
+            >
+              <option value="High">High Priority</option>
+              <option value="Medium">Medium Priority</option>
+              <option value="Low">Low Priority</option>
+            </select>
+          </div>
+        </div>
+        
+        <div className="form-actions">
+          <button type="submit" className="save-btn">
+            Save Changes
+          </button>
+          <button type="button" onClick={cancelEditing} className="cancel-btn">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
 
         <div className="task-list-container">
           <div className="list-header">

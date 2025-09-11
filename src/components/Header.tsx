@@ -38,12 +38,12 @@ export default function Header() {
           ))}
         </nav>
 
-        <div className="tech-logos">
+        {/*<div className="tech-logos">
           <div className="tech-logo">
             <img src={HackathonLogo} alt="Hackathon" className="h-6" />
             <span className="text-xs text-gray-400 ml-2">NAVER Vietnam AI HACKATHON 2025</span>
           </div>
-        </div>
+        </div>*/}
       </div>
 
       <div className="hackathon-info">
