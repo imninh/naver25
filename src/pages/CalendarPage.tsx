@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Calendar, dateFnsLocalizer, type View, Views } from "react-big-calendar";
 import type { Event } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay, addWeeks, addMonths, addDays, subWeeks, subMonths, subDays } from "date-fns";
@@ -9,6 +9,7 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 
 // Định nghĩa interface mở rộng cho Event
 interface TaskEvent extends Event {
+  id: string;
   task?: Task;
 }
 
@@ -742,28 +743,27 @@ export default function CalendarPage() {
   const [view, setView] = useState<View>(Views.MONTH);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<'Scheduled' | 'Overdue' | 'Upcoming' | null>(null);
+  const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([]);
+  const [dismissedNotifications, setDismissedNotifications] = useState<Set<string>>(new Set());
 
   const events: TaskEvent[] = useMemo(
     () =>
       tasks
-        .filter((t: Task) => t.dueDate && !t.completed) // Only show non-completed tasks with due dates
+        .filter((t: Task) => t.dueDate && !t.completed)
         .map((t: Task) => {
           try {
             const dueDateStr = t.dueDate!;
             const dueDate = new Date(dueDateStr);
-            
             if (isNaN(dueDate.getTime())) return null;
-
             const hasTime = dueDateStr.includes('T') && (dueDate.getHours() !== 0 || dueDate.getMinutes() !== 0);
-            const endDate = hasTime ? dueDate : new Date(dueDate); // No duration for timed events
-
+            const endDate = hasTime ? dueDate : new Date(dueDate);
             return {
               id: t.id,
               title: t.title,
               start: dueDate,
               end: endDate,
               allDay: !hasTime,
-              task: t
+              task: t,
             };
           } catch (error) {
             console.error("Error parsing due date:", error);
@@ -774,50 +774,80 @@ export default function CalendarPage() {
     [tasks]
   );
 
-  const eventPropGetter = (event: TaskEvent) => {
-    const task = event.task;
-    if (!task) {
-      return {
-        style: {
-          backgroundColor: '#718096',
-          height: '20px',
-          lineHeight: '20px'
-        }
-      };
-    }
-
-    let backgroundColor = '#09C65B'; // Default low
-
-    if (!task.completed && task.dueDate && new Date(task.dueDate) < new Date()) {
-      backgroundColor = '#FF4757'; // Overdue
-    } else {
+  const eventPropGetter = (event: Event) => {
+    const task = (event as TaskEvent).task;
+    let backgroundColor = '#09C65B';
+    if (task && !task.completed && task.dueDate && new Date(task.dueDate) < new Date()) {
+      backgroundColor = '#FF4757';
+    } else if (task) {
       if (task.priority === 'High') backgroundColor = '#FF4757';
       else if (task.priority === 'Medium') backgroundColor = '#FFA502';
       else backgroundColor = '#09C65B';
     }
-
-    const style: React.CSSProperties = { 
-      backgroundColor,
-      height: '20px',
-      lineHeight: '20px'
-    };
-
-    if (task.completed) {
-      style.opacity = 0.5;
-    }
-
+const style: React.CSSProperties = { 
+  backgroundColor, 
+  height: '20px', 
+  lineHeight: '20px' 
+};
+if (task?.completed) style.opacity = 0.5;
     return { style };
   };
 
-  const handleSelectEvent = (event: TaskEvent) => {
-    if (event.task) {
-      setSelectedTask(event.task);
-    }
+  const handleSelectEvent = (event: Event) => {
+    const task = tasks.find(t => t.id === (event as TaskEvent).id);
+    if (task) setSelectedTask(task);
   };
 
   const scheduledTasks = useMemo(() => tasks.filter(t => t.dueDate), [tasks]);
   const overdueTasks = useMemo(() => tasks.filter(t => !t.completed && t.dueDate && new Date(t.dueDate) < new Date()), [tasks]);
-  const upcomingTasks = useMemo(() => tasks.filter(t => !t.completed && t.dueDate && new Date(t.dueDate) > new Date()), [tasks]);
+
+  useEffect(() => {
+    const checkUpcoming = () => {
+      const now = new Date();
+      const upcoming = tasks.filter(t => 
+        !t.completed && t.dueDate && 
+        new Date(t.dueDate) > now && 
+        new Date(t.dueDate) < new Date(now.getTime() + 60 * 60 * 1000)
+      );
+      setUpcomingTasks(upcoming);
+    };
+    checkUpcoming();
+    const interval = setInterval(checkUpcoming, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [tasks]);
+
+  useEffect(() => {
+    if (Notification.permission === 'granted') {
+      const sendNotification = (title: string, options: NotificationOptions, taskId: string) => {
+        const notification = new Notification(title, options);
+        notification.onclose = () => {
+          setDismissedNotifications(prev => {
+            const newSet = new Set(prev);
+            newSet.add(taskId);
+            return newSet;
+          });
+        };
+      };
+
+      overdueTasks
+        .filter(task => !dismissedNotifications.has(task.id))
+        .forEach(task => {
+          sendNotification('Cảnh báo: Công việc Quá hạn', {
+            body: `Bạn có ${overdueTasks.length} công việc quá hạn! Kiểm tra ngay.`,
+            icon: '/favicon.ico',
+          }, task.id);
+        });
+
+      upcomingTasks
+        .filter(task => !dismissedNotifications.has(task.id))
+        .forEach(task => {
+          sendNotification(`Nhắc nhở: ${task.title}`, {
+            body: `Sắp đến hạn trong <1 giờ lúc ${task.dueDate ? new Date(task.dueDate).toLocaleTimeString() : ''}`,
+            icon: '/favicon.ico',
+          }, task.id);
+        });
+    }
+  }, [overdueTasks, upcomingTasks, dismissedNotifications]);
 
   const getCategoryTasks = () => {
     if (selectedCategory === 'Scheduled') return scheduledTasks;
@@ -826,77 +856,34 @@ export default function CalendarPage() {
     return [];
   };
 
-  const handleNavigate = (newDate: Date) => {
-    setDate(newDate);
-  };
-
-  const handleView = (newView: View) => {
-    setView(newView);
-  };
-
-  const handleGoToToday = () => {
-    setDate(new Date());
-  };
-
+  const handleNavigate = (newDate: Date) => setDate(newDate);
+  const handleView = (newView: View) => setView(newView);
+  const handleGoToToday = () => setDate(new Date());
   const handleNavigateBack = () => {
-    if (view === Views.MONTH) {
-      setDate(subMonths(date, 1));
-    } else if (view === Views.WEEK) {
-      setDate(subWeeks(date, 1));
-    } else if (view === Views.DAY) {
-      setDate(subDays(date, 1));
-    }
+    if (view === Views.MONTH) setDate(subMonths(date, 1));
+    else if (view === Views.WEEK) setDate(subWeeks(date, 1));
+    else if (view === Views.DAY) setDate(subDays(date, 1));
   };
-
   const handleNavigateNext = () => {
-    if (view === Views.MONTH) {
-      setDate(addMonths(date, 1));
-    } else if (view === Views.WEEK) {
-      setDate(addWeeks(date, 1));
-    } else if (view === Views.DAY) {
-      setDate(addDays(date, 1));
-    }
+    if (view === Views.MONTH) setDate(addMonths(date, 1));
+    else if (view === Views.WEEK) setDate(addWeeks(date, 1));
+    else if (view === Views.DAY) setDate(addDays(date, 1));
   };
 
-  // Custom Toolbar Component
-  const CustomToolbar = () => {
-    return (
-      <div className="custom-toolbar">
-        <div className="view-buttons">
-          <button
-            className={view === Views.MONTH ? "active" : ""}
-            onClick={() => handleView(Views.MONTH)}
-          >
-            Month
-          </button>
-          <button
-            className={view === Views.WEEK ? "active" : ""}
-            onClick={() => handleView(Views.WEEK)}
-          >
-            Week
-          </button>
-          <button
-            className={view === Views.DAY ? "active" : ""}
-            onClick={() => handleView(Views.DAY)}
-          >
-            Day
-          </button>
-        </div>
-        
-        <div className="navigation-buttons">
-          <button onClick={handleNavigateBack}>
-            ←
-          </button>
-          <button onClick={handleGoToToday} className="today-button">
-            Today
-          </button>
-          <button onClick={handleNavigateNext}>
-            →
-          </button>
-        </div>
+  const CustomToolbar = () => (
+    <div className="custom-toolbar">
+      <div className="view-buttons">
+        <button className={view === Views.MONTH ? "active" : ""} onClick={() => handleView(Views.MONTH)}>Month</button>
+        <button className={view === Views.WEEK ? "active" : ""} onClick={() => handleView(Views.WEEK)}>Week</button>
+        <button className={view === Views.DAY ? "active" : ""} onClick={() => handleView(Views.DAY)}>Day</button>
       </div>
-    );
-  };
+      <div className="navigation-buttons">
+        <button onClick={handleNavigateBack}>←</button>
+        <button onClick={handleGoToToday} className="today-button">Today</button>
+        <button onClick={handleNavigateNext}>→</button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="task-app">
@@ -904,9 +891,7 @@ export default function CalendarPage() {
         <header className="app-header">
           <div className="header-content">
             <div className="header-brand">
-              <div className="brand-logo">
-                <span>📅</span>
-              </div>
+              <div className="brand-logo"><span>📅</span></div>
               <div className="brand-text">
                 <h1 className="brand-name">Calendar</h1>
                 <p className="brand-tagline">View your tasks schedule</p>
@@ -915,20 +900,34 @@ export default function CalendarPage() {
           </div>
         </header>
 
-        {/* Calendar Content */}
         <div className="calendar-content">
           <style>{calendarStyles}</style>
           
           <div className="calendar-stats">
-            <div className="stat clickable" onClick={() => setSelectedCategory('Scheduled')}>
+            <div className="stat clickable" onClick={() => {
+              setSelectedCategory('Scheduled');
+              if (Notification.permission === 'granted' && scheduledTasks.length > 0) {
+                new Notification('Danh sách Đã Lên Lịch', { body: 'Bạn vừa mở danh sách công việc đã lên lịch.' });
+              }
+            }}>
               <span className="stat-number">{scheduledTasks.length}</span>
               <span className="stat-label">Scheduled Tasks</span>
             </div>
-            <div className="stat clickable" onClick={() => setSelectedCategory('Overdue')}>
+            <div className="stat clickable" onClick={() => {
+              setSelectedCategory('Overdue');
+              if (Notification.permission === 'granted' && overdueTasks.length > 0) {
+                new Notification('Danh sách Quá hạn', { body: 'Bạn vừa mở danh sách công việc quá hạn.' });
+              }
+            }}>
               <span className="stat-number">{overdueTasks.length}</span>
               <span className="stat-label">Overdue Tasks</span>
             </div>
-            <div className="stat clickable" onClick={() => setSelectedCategory('Upcoming')}>
+            <div className="stat clickable" onClick={() => {
+              setSelectedCategory('Upcoming');
+              if (Notification.permission === 'granted' && upcomingTasks.length > 0) {
+                new Notification('Danh sách Sắp đến hạn', { body: `Bạn có ${upcomingTasks.length} công việc sắp đến hạn.` });
+              }
+            }}>
               <span className="stat-number">{upcomingTasks.length}</span>
               <span className="stat-label">Upcoming Tasks</span>
             </div>
@@ -948,30 +947,14 @@ export default function CalendarPage() {
               onSelectEvent={handleSelectEvent}
               popup
               views={[Views.MONTH, Views.WEEK, Views.DAY]}
-              components={{
-                toolbar: CustomToolbar
-              }}
+              components={{ toolbar: CustomToolbar }}
               eventPropGetter={eventPropGetter}
             />
           </div>
         </div>
 
-        {/* Modal hiển thị chi tiết task */}
-        {selectedTask && (
-          <TaskDetailModal 
-            task={selectedTask} 
-            onClose={() => setSelectedTask(null)} 
-          />
-        )}
-
-        {/* Modal hiển thị list tasks */}
-        {selectedCategory && (
-          <TaskListModal
-            category={selectedCategory}
-            tasks={getCategoryTasks()}
-            onClose={() => setSelectedCategory(null)}
-          />
-        )}
+        {selectedTask && <TaskDetailModal task={selectedTask} onClose={() => setSelectedTask(null)} />}
+        {selectedCategory && <TaskListModal category={selectedCategory} tasks={getCategoryTasks()} onClose={() => setSelectedCategory(null)} />}
 
         <style>{`
           .task-app {

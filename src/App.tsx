@@ -3,7 +3,7 @@ import ListPage from "./pages/ListPage";
 import CalendarPage from "./pages/CalendarPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import Header from "./components/Header";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import GeminiAssistant from "./components/GeminiAssistant";
 import { useTasks } from "./hooks/useTasks";
 import "./App.css";
@@ -18,6 +18,17 @@ export default function App() {
     addTask(title, dueDate, description, priority, subject);
   };
 
+  useEffect(() => {
+    if ('Notification' in window) {
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+          console.log('Notification permission granted');
+        } else {
+          console.log('Notification permission denied');
+        }
+      });
+    }
+    }, []);
   return (
     <div className="min-h-screen bg-gray-50">
       <Router>
