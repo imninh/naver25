@@ -7,6 +7,11 @@ import { useTasks } from "../hooks/useTasks";
 import type { Task } from "../types/task";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
+// Định nghĩa interface mở rộng cho Event
+interface TaskEvent extends Event {
+  task?: Task;
+}
+
 const locales = { "en-US": enUS };
 
 const localizer = dateFnsLocalizer({
@@ -738,39 +743,49 @@ export default function CalendarPage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<'Scheduled' | 'Overdue' | 'Upcoming' | null>(null);
 
-  const events: Event[] = useMemo(
-  () =>
-    tasks
-      .filter((t: Task) => t.dueDate && !t.completed) // Only show non-completed tasks with due dates
-      .map((t: Task) => {
-        try {
-          const dueDateStr = t.dueDate!;
-          const dueDate = new Date(dueDateStr);
-          
-          if (isNaN(dueDate.getTime())) return null;
+  const events: TaskEvent[] = useMemo(
+    () =>
+      tasks
+        .filter((t: Task) => t.dueDate && !t.completed) // Only show non-completed tasks with due dates
+        .map((t: Task) => {
+          try {
+            const dueDateStr = t.dueDate!;
+            const dueDate = new Date(dueDateStr);
+            
+            if (isNaN(dueDate.getTime())) return null;
 
-          const hasTime = dueDateStr.includes('T') && (dueDate.getHours() !== 0 || dueDate.getMinutes() !== 0);
-          const endDate = hasTime ? dueDate : new Date(dueDate); // No duration for timed events
+            const hasTime = dueDateStr.includes('T') && (dueDate.getHours() !== 0 || dueDate.getMinutes() !== 0);
+            const endDate = hasTime ? dueDate : new Date(dueDate); // No duration for timed events
 
-          return {
-            id: t.id,
-            title: t.title,
-            start: dueDate,
-            end: endDate,
-            allDay: !hasTime,
-            task: t
-          };
-        } catch (error) {
-          console.error("Error parsing due date:", error);
-          return null;
+            return {
+              id: t.id,
+              title: t.title,
+              start: dueDate,
+              end: endDate,
+              allDay: !hasTime,
+              task: t
+            };
+          } catch (error) {
+            console.error("Error parsing due date:", error);
+            return null;
+          }
+        })
+        .filter(Boolean) as TaskEvent[],
+    [tasks]
+  );
+
+  const eventPropGetter = (event: TaskEvent) => {
+    const task = event.task;
+    if (!task) {
+      return {
+        style: {
+          backgroundColor: '#718096',
+          height: '20px',
+          lineHeight: '20px'
         }
-      })
-      .filter(Boolean) as Event[],
-  [tasks]
-);
+      };
+    }
 
-  const eventPropGetter = (event: Event) => {
-    const task = event.task as Task;
     let backgroundColor = '#09C65B'; // Default low
 
     if (!task.completed && task.dueDate && new Date(task.dueDate) < new Date()) {
@@ -781,11 +796,12 @@ export default function CalendarPage() {
       else backgroundColor = '#09C65B';
     }
 
-    const style = { 
+    const style: React.CSSProperties = { 
       backgroundColor,
-      height: '20px', // Ensure consistent height for clickable area
-      lineHeight: '20px' // Align text vertically
+      height: '20px',
+      lineHeight: '20px'
     };
+
     if (task.completed) {
       style.opacity = 0.5;
     }
@@ -793,10 +809,9 @@ export default function CalendarPage() {
     return { style };
   };
 
-  const handleSelectEvent = (event: Event) => {
-    const task = tasks.find(t => t.id === (event as any).id);
-    if (task) {
-      setSelectedTask(task);
+  const handleSelectEvent = (event: TaskEvent) => {
+    if (event.task) {
+      setSelectedTask(event.task);
     }
   };
 
@@ -1033,10 +1048,12 @@ export default function CalendarPage() {
             min-width: 100px;
             cursor: pointer;
             transition: background 0.2s;
+            border: 1px solid #E2E8F0;
           }
           
           .calendar-stats .stat:hover {
             background: #E2E8F0;
+            transform: translateY(-2px);
           }
           
           .calendar-stats .stat-number {
