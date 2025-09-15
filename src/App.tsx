@@ -7,6 +7,7 @@ import { useState } from "react";
 import GeminiAssistant from "./components/GeminiAssistant";
 import { useTasks } from "./hooks/useTasks";
 import "./App.css";
+import CopyCatLogo from "./assets/copycat-logo.png";
 
 export default function App() {
   const [showAssistant, setShowAssistant] = useState(false);
@@ -26,6 +27,12 @@ export default function App() {
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
         </Routes>
+        
+        {/* Tên cuộc thi với logo - Fixed position */}
+        <div className="copycat-footer">
+          <img src={CopyCatLogo} alt="CopyCat Logo" className="copycat-logo-img" />
+          <span className="copycat-text">NAVER Vietnam AI HACKATHON 2025</span>
+        </div>
         
         {/* Nút mở Gemini Assistant */}
         <button

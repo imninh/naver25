@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useTasks } from "../hooks/useTasks";
 import type { Task } from "../types/task";
+import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 
 export default function ListPage() {
   const { tasks, addTask, deleteTask, toggleComplete, updateTask } = useTasks();
@@ -10,8 +11,8 @@ export default function ListPage() {
   const [dueTime, setDueTime] = useState("");
   const [desc, setDesc] = useState("");
   const [priority, setPriority] = useState<"High" | "Medium" | "Low">("Medium");
-  const [activeFilter, setActiveFilter] = useState<"all" | "active" | "completed">("all");
-  const [sortBy, setSortBy] = useState<"date" | "priority" | "title">("date");
+  const [activeFilter, setActiveFilter] = useState<"all" | "active" | "completed" | "overdue" | "today" | "tomorrow">("all");
+  const [sortBy, setSortBy] = useState<"date" | "priority" | "title" | "manual">("date");
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editSubject, setEditSubject] = useState("");
@@ -19,8 +20,24 @@ export default function ListPage() {
   const [editDueTime, setEditDueTime] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [editPriority, setEditPriority] = useState<"High" | "Medium" | "Low">("Medium");
+  const [taskOrder, setTaskOrder] = useState<string[]>([]);
+  const [prevTaskCount, setPrevTaskCount] = useState(0);
 
-    const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (tasks.length > prevTaskCount) {
+      const newTasks = tasks.filter(t => !taskOrder.includes(t.id.toString()));
+      if (newTasks.length > 0) {
+        setTaskOrder([...taskOrder, ...newTasks.map(t => t.id.toString())]);
+      }
+    } else if (tasks.length < prevTaskCount) {
+      setTaskOrder(taskOrder.filter(id => tasks.some(t => t.id.toString() === id)));
+    } else if (taskOrder.length !== tasks.length || !tasks.every(t => taskOrder.includes(t.id.toString()))) {
+      setTaskOrder(tasks.map(t => t.id.toString()));
+    }
+    setPrevTaskCount(tasks.length);
+  }, [tasks]);
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title) return;
     
@@ -44,7 +61,7 @@ export default function ListPage() {
     setPriority("Medium");
   };
 
-    const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTask || !editTitle) return;
     
@@ -66,7 +83,7 @@ export default function ListPage() {
     setEditingTask(null);
   };
 
-    const startEditing = (task: Task) => {
+  const startEditing = (task: Task) => {
     setEditingTask(task);
     setEditTitle(task.title);
     setEditSubject(task.subject || "");
@@ -91,14 +108,45 @@ export default function ListPage() {
     setEditingTask(null);
   };
 
+  const isToday = (someDate: Date) => {
+    const today = new Date();
+    const taskDate = new Date(someDate); // Ensure we work with a new Date object
+    return (
+      taskDate.getDate() === today.getDate() &&
+      taskDate.getMonth() === today.getMonth() &&
+      taskDate.getFullYear() === today.getFullYear() &&
+      taskDate.getTime() >= today.getTime() // Ensure the due time is now or in the future
+    );
+  };
+
+  const isTomorrow = (someDate: Date) => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return someDate.getDate() === tomorrow.getDate() &&
+      someDate.getMonth() === tomorrow.getMonth() &&
+      someDate.getFullYear() === tomorrow.getFullYear();
+  };
+
   const filteredTasks = tasks.filter(task => {
+    if (activeFilter === "all") return true;
     if (activeFilter === "active") return !task.completed;
     if (activeFilter === "completed") return task.completed;
+    if (activeFilter === "overdue") {
+      return !task.completed && task.dueDate && new Date(task.dueDate) < new Date();
+    }
+    if (activeFilter === "today") {
+      return !task.completed && task.dueDate && isToday(new Date(task.dueDate));
+    }
+    if (activeFilter === "tomorrow") {
+      return !task.completed && task.dueDate && isTomorrow(new Date(task.dueDate));
+    }
     return true;
   });
 
   const sortedTasks = [...filteredTasks].sort((a, b) => {
-    if (sortBy === "date") {
+    if (sortBy === "manual") {
+      return taskOrder.indexOf(a.id.toString()) - taskOrder.indexOf(b.id.toString());
+    } else if (sortBy === "date") {
       if (!a.dueDate && !b.dueDate) return 0;
       if (!a.dueDate) return 1;
       if (!b.dueDate) return -1;
@@ -110,6 +158,31 @@ export default function ListPage() {
       return a.title.localeCompare(b.title);
     }
   });
+
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination || sortBy !== "manual") return;
+
+    const sourceIndex = result.source.index;
+    const destIndex = result.destination.index;
+
+    if (sourceIndex === destIndex) return;
+
+    const movedId = sortedTasks[sourceIndex].id.toString();
+
+    let insertIndex: number;
+
+    if (destIndex === 0) {
+      const firstId = sortedTasks[0].id.toString();
+      insertIndex = taskOrder.indexOf(firstId);
+    } else {
+      const prevId = sortedTasks[destIndex - 1].id.toString();
+      insertIndex = taskOrder.indexOf(prevId) + 1;
+    }
+
+    const newOrder = taskOrder.filter(id => id !== movedId);
+    newOrder.splice(insertIndex, 0, movedId);
+    setTaskOrder(newOrder);
+  };
 
   const renderStatusBadge = (task: Task) => {
     if (task.completed) 
@@ -145,9 +218,9 @@ export default function ListPage() {
       if (isNaN(date.getTime())) return "";
       
       const now = new Date();
-      const isToday = date.toDateString() === now.toDateString();
+      const isTodayDate = date.toDateString() === now.toDateString();
       
-      if (isToday) {
+      if (isTodayDate) {
         return `Today, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
       } else {
         return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
@@ -204,37 +277,33 @@ export default function ListPage() {
           </div>
           
           <div className="controls-row">
-            <div className="filters">
-              <button 
-                className={`filter-btn ${activeFilter === "all" ? "active" : ""}`}
-                onClick={() => setActiveFilter("all")}
+            <div className="filter-control">
+              <label>View:</label>
+              <select 
+                value={activeFilter} 
+                onChange={(e) => setActiveFilter(e.target.value as "all" | "active" | "completed" | "overdue" | "today" | "tomorrow")}
+                className="filter-select"
               >
-                All
-              </button>
-              <button 
-                className={`filter-btn ${activeFilter === "active" ? "active" : ""}`}
-                onClick={() => setActiveFilter("active")}
-              >
-                Active
-              </button>
-              <button 
-                className={`filter-btn ${activeFilter === "completed" ? "active" : ""}`}
-                onClick={() => setActiveFilter("completed")}
-              >
-                Completed
-              </button>
+                <option value="all">All Tasks</option>
+                <option value="active">Active Tasks</option>
+                <option value="completed">Completed Tasks</option>
+                <option value="overdue">Overdue Tasks</option>
+                <option value="today">Today's Tasks</option>
+                <option value="tomorrow">Tomorrow's Tasks</option>
+              </select>
             </div>
             
             <div className="sort-control">
               <label>Sort by:</label>
               <select 
                 value={sortBy} 
-                onChange={(e) => setSortBy(e.target.value as "date" | "priority" | "title")}
+                onChange={(e) => setSortBy(e.target.value as "date" | "priority" | "title" | "manual")}
                 className="sort-select"
               >
                 <option value="date">Due Date</option>
                 <option value="priority">Priority</option>
                 <option value="title">Title</option>
+                <option value="manual">Manual Order</option>
               </select>
             </div>
           </div>
@@ -293,9 +362,7 @@ export default function ListPage() {
         </div>
       </form>
 
-        {/* Edit Task Modal */}
-        {/* Edit Task Modal */}
-{editingTask && (
+        {editingTask && (
   <div className="edit-task-modal">
     <div className="edit-task-content">
       <div className="modal-header">
@@ -402,74 +469,89 @@ export default function ListPage() {
 
           <div className="task-list">
             {sortedTasks.length > 0 ? (
-              sortedTasks.map((t) => (
-                <div
-                  key={t.id}
-                  className={`task-item ${t.completed ? "completed" : ""}`}
-                >
-                  <div className="task-main">
-                    <div className="task-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={t.completed}
-                        onChange={() => toggleComplete(t.id)}
-                        id={`task-${t.id}`}
-                      />
-                      <label htmlFor={`task-${t.id}`}></label>
+              <DragDropContext onDragEnd={onDragEnd}>
+                <Droppable droppableId="tasks">
+                  {(provided) => (
+                    <div {...provided.droppableProps} ref={provided.innerRef}>
+                      {sortedTasks.map((t, index) => (
+                        <Draggable key={t.id.toString()} draggableId={t.id.toString()} index={index} isDragDisabled={sortBy !== "manual"}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className={`task-item ${t.completed ? "completed" : ""} ${snapshot.isDragging ? "dragging" : ""}`}
+                            >
+                              <div className="task-main">
+                                <div className="task-checkbox">
+                                  <input
+                                    type="checkbox"
+                                    checked={t.completed}
+                                    onChange={() => toggleComplete(t.id)}
+                                    id={`task-${t.id}`}
+                                  />
+                                  <label htmlFor={`task-${t.id}`}></label>
+                                </div>
+                                <div className="task-content">
+                                  <div className="task-title-row">
+                                    <span className={`task-title ${t.completed ? "completed" : ""}`}>
+                                      {t.title}
+                                    </span>
+                                    <div className="task-priority">
+                                      {renderPriorityBadge(t.priority)}
+                                    </div>
+                                  </div>
+                                  {t.subject && (
+                                    <div className="task-subject">
+                                      <span className="subject-icon">📚</span>
+                                      {t.subject}
+                                    </div>
+                                  )}
+                                  {t.description && (
+                                    <p className="task-description">{t.description}</p>
+                                  )}
+                                  <div className="task-meta">
+                                    {t.dueDate && (
+                                      <div className="task-due-date">
+                                        <span className="calendar-icon">⏰</span>
+                                        {formatDateTime(t.dueDate)}
+                                      </div>
+                                    )}
+                                    <div className="task-status">
+                                      {renderStatusBadge(t)}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="task-actions">
+                                <button
+                                  onClick={() => startEditing(t)}
+                                  className="edit-btn"
+                                  title="Edit task"
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M11 4H4C3.44772 4 3 4.44772 3 5V20C3 20.5523 3.44772 21 4 21H19C19.5523 21 20 20.5523 20 20V13M18.4142 5.41421C18.7893 5.03914 19.298 4.82843 19.8284 4.82843C20.3588 4.82843 20.8675 5.03914 21.2426 5.41421C21.6177 5.78929 21.8284 6.298 21.8284 6.82843C21.8284 7.35885 21.6177 7.86757 21.2426 8.24264L12 17.4853L8 18L8.51472 14L18.4142 5.41421Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => deleteTask(t.id)}
+                                  className="delete-btn"
+                                  title="Delete task"
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M19 7L18.1326 19.142C18.0579 20.1891 17.187 21 16.1376 21H7.86244C6.81296 21 5.94208 20.1891 5.86745 19.142L5 7M10 11V17M14 11V17M15 7V4C15 3.44772 14.5523 3 14 3H10C9.44772 3 9 3.44772 9 4V7M4 7H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
                     </div>
-                    <div className="task-content">
-                      <div className="task-title-row">
-                        <span className={`task-title ${t.completed ? "completed" : ""}`}>
-                          {t.title}
-                        </span>
-                        <div className="task-priority">
-                          {renderPriorityBadge(t.priority)}
-                        </div>
-                      </div>
-                      {t.subject && (
-                        <div className="task-subject">
-                          <span className="subject-icon">📚</span>
-                          {t.subject}
-                        </div>
-                      )}
-                      {t.description && (
-                        <p className="task-description">{t.description}</p>
-                      )}
-                      <div className="task-meta">
-                        {t.dueDate && (
-                          <div className="task-due-date">
-                            <span className="calendar-icon">⏰</span>
-                            {formatDateTime(t.dueDate)}
-                          </div>
-                        )}
-                        <div className="task-status">
-                          {renderStatusBadge(t)}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="task-actions">
-                    <button
-                      onClick={() => startEditing(t)}
-                      className="edit-btn"
-                      title="Edit task"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M11 4H4C3.44772 4 3 4.44772 3 5V20C3 20.5523 3.44772 21 4 21H19C19.5523 21 20 20.5523 20 20V13M18.4142 5.41421C18.7893 5.03914 19.298 4.82843 19.8284 4.82843C20.3588 4.82843 20.8675 5.03914 21.2426 5.41421C21.6177 5.78929 21.8284 6.298 21.8284 6.82843C21.8284 7.35885 21.6177 7.86757 21.2426 8.24264L12 17.4853L8 18L8.51472 14L18.4142 5.41421Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => deleteTask(t.id)}
-                      className="delete-btn"
-                      title="Delete task"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M19 7L18.1326 19.142C18.0579 20.1891 17.187 21 16.1376 21H7.86244C6.81296 21 5.94208 20.1891 5.86745 19.142L5 7M10 11V17M14 11V17M15 7V4C15 3.44772 14.5523 3 14 3H10C9.44772 3 9 3.44772 9 4V7M4 7H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              ))
+                  )}
+                </Droppable>
+              </DragDropContext>
             ) : (
               <div className="empty-state">
                 <div className="empty-icon">📋</div>
@@ -584,27 +666,23 @@ export default function ListPage() {
           gap: 16px;
         }
         
-        .filters {
+        .filter-control {
           display: flex;
-          background: #F7FAFC;
-          border-radius: 8px;
-          padding: 4px;
+          align-items: center;
+          gap: 8px;
         }
         
-        .filter-btn {
-          border: none;
-          padding: 8px 16px;
-          border-radius: 6px;
-          background: transparent;
-          cursor: pointer;
+        .filter-control label {
           font-size: 14px;
           color: #718096;
         }
         
-        .filter-btn.active {
+        .filter-select {
+          border: 1px solid #E2E8F0;
+          border-radius: 6px;
+          padding: 6px 12px;
           background: white;
-          color: #09C65B;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          color: #2D3748;
         }
         
         .sort-control {
@@ -800,6 +878,11 @@ export default function ListPage() {
         
         .task-item.completed {
           opacity: 0.7;
+        }
+        
+        .task-item.dragging {
+          background: #E2E8F0;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
         .task-main {

@@ -1,7 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
 import HackathonLogo from "../assets/hackathon-graphic.svg";
 import ReactLogo from "../assets/react.svg";
-import "../index.css"; // Import CSS để sử dụng các class đã định nghĩa
+import "../index.css"; 
+import CopycatLogo from "../assets/copycat-logo.png";
 
 export default function Header() {
   const location = useLocation();
@@ -38,12 +39,12 @@ export default function Header() {
           ))}
         </nav>
 
-        {/*<div className="tech-logos">
+        <div className="tech-logos">
           <div className="tech-logo">
             <img src={HackathonLogo} alt="Hackathon" className="h-6" />
             <span className="text-xs text-gray-400 ml-2">NAVER Vietnam AI HACKATHON 2025</span>
           </div>
-        </div>*/}
+        </div>
       </div>
 
       <div className="hackathon-info">

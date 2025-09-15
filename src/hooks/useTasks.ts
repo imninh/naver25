@@ -1,8 +1,7 @@
-// hooks/useTasks.ts - Phiên bản tối ưu
 import { useState, useEffect, useCallback } from "react";
 import type { Task } from "../types/task";
 
-// Biến toàn cục để đồng bộ state giữa các instances
+
 let globalTasks: Task[] = [];
 let listeners: Array<() => void> = [];
 
@@ -31,7 +30,7 @@ const broadcastChange = () => {
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>(globalTasks);
 
-  // Load tasks từ localStorage khi khởi tạo
+
   useEffect(() => {
     const loadedTasks = loadTasksFromStorage();
     globalTasks = loadedTasks;
@@ -39,12 +38,12 @@ export function useTasks() {
     broadcastChange();
   }, []);
 
-  // Lưu tasks vào localStorage mỗi khi có thay đổi
+ 
   useEffect(() => {
     saveTasksToStorage(globalTasks);
   }, [tasks]);
 
-  // Lắng nghe thay đổi từ các components khác
+  
   useEffect(() => {
     const listener = () => setTasks([...globalTasks]);
     listeners.push(listener);
@@ -101,11 +100,22 @@ export function useTasks() {
     broadcastChange();
   }, []);
 
+  const reorderTasks = (taskIds: string[]) => {
+  const newOrder = taskIds.map((id, index) => {
+    const task = tasks.find(t => t.id === id);
+    return task ? { ...task, order: index } : null;
+  }).filter(Boolean) as Task[];
+  
+  setTasks(newOrder);
+  localStorage.setItem('tasks', JSON.stringify(newOrder));
+};
+
   return {
     tasks,
     addTask,
     deleteTask,
     toggleComplete,
-    updateTask
+    updateTask, 
+    reorderTasks
   };
 }

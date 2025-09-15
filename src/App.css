@@ -112,3 +112,51 @@ body {
 .bg-gray-50 {
   background-color: #f9fafb;
 }
+
+.copycat-footer {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.4;
+  transition: opacity 0.3s ease;
+}
+
+.copycat-footer:hover {
+  opacity: 0.7;
+}
+
+.copycat-logo-img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  opacity: 0.8;
+}
+
+.copycat-text {
+  font-size: 12px;
+  font-weight: 400;
+  color: #000000;
+  letter-spacing: 0.2px;
+}
+
+/* Responsive cho phiên bản minimal */
+@media (max-width: 768px) {
+  .copycat-footer {
+    bottom: 16px;
+    left: 16px;
+    opacity: 0.35;
+  }
+  
+  .copycat-logo-img {
+    width: 18px;
+    height: 18px;
+  }
+  
+  .copycat-text {
+    font-size: 11px;
+  }
+}
