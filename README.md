@@ -1,65 +1,49 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/YHSq4TPZ)
-# To-Do App – Preliminary Assignment Submission
-⚠️ Please complete **all sections marked with the ✍️ icon** — these are required for your submission.
+# 📝 Naver25 ToDo Web App
 
-👀 Please Check ASSIGNMENT.md file in this repository for assignment requirements.
+A simple yet efficient ToDo web application built with **React** and **Tailwind CSS**, designed for quick task management and clean UI/UX.  
+Originally developed as a personal project for a hackathon submission in September 2025.
 
-## 🚀 Project Setup & Usage
-**How to install and run your project:**  
-✍️  
-Example (replace with your actual steps)  
-- `npm install`  
-- `npm start`
+---
 
-## 🔗 Deployed Web URL or APK file
-✍️ [Paste your link here]
+## 🚀 Features
+- ✏️ **Create, edit, delete tasks**
+- 📆 **Set due dates and priorities**
+- 🔍 **Filter and search tasks**
+- 💾 **Data persistence using LocalStorage**
+- 📱 **Responsive UI with Tailwind CSS**
+- ⚡ **Fast and lightweight** — built with a focus on usability and clarity
 
+---
 
-## 🎥 Demo Video
-**Demo video link (≤ 2 minutes):**  
-📌 **Video Upload Guideline:** when uploading your demo video to YouTube, please set the visibility to **Unlisted**.  
-- “Unlisted” videos can only be viewed by users who have the link.  
-- The video will not appear in search results or on your channel.  
-- Share the link in your README so mentors can access it.  
+## 🧠 Tech Stack
+- **Frontend:** React, Tailwind CSS, JavaScript  
+- **State Management:** React hooks  
+- **Storage:** Browser LocalStorage  
+- **Deployment:** Vercel
 
-✍️ [Paste your video link here]
+---
 
+## 📸 Demo
+👉 Live Demo: [https://naver25.vercel.app](https://naver25.vercel.app)
 
-## 💻 Project Introduction
+---
 
-### a. Overview
+## 🧩 Project Overview
+This project was developed to practice:
+- Building a responsive React application with Tailwind CSS
+- Managing CRUD operations and local data storage
+- Optimizing front-end performance and UI components
 
-✍️ [Write your content here]
+Although it was initially submitted for a hackathon, it reflects my learning progress and personal improvement in frontend development.
 
-### b. Key Features & Function Manual
+---
 
-✍️ [Write your content here, explain about your app's functions]
+## 🧑‍💻 Author
+**Tran The Ninh**  
+- Email: Ninh.TT233873@sis.hust.edu.vn  
+- GitHub: [https://github.com/imninh](https://github.com/imninh)
 
-### c. Unique Features (What’s special about this app?) 
+---
 
-✍️ [Write your content here]
-
-### d. Technology Stack and Implementation Methods
-
-✍️ [Write your content here]
-
-### e. Service Architecture & Database structure (when used)
-
-✍️ [Write your content here]
-
-## 🧠 Reflection
-
-### a. If you had more time, what would you expand?
-
-✍️ [Write your content here]
-
-
-### b. If you integrate AI APIs more for your app, what would you do?
-
-✍️ [Write your content here]
-
-
-## ✅ Checklist
-- [ ] Code runs without errors  
-- [ ] All required features implemented (add/edit/delete/complete tasks)  
-- [ ] All ✍️ sections are filled  
+## 📜 License
+MIT License © 2025 Tran The Ninh
